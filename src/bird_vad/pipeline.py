@@ -139,7 +139,7 @@ def process_one_audio(
     vad_wav = cfg.recorder.audio_dir / f"{chunk_id}.vad_input.wav"
     convert_wav_for_vad(source_wav, vad_wav, target_sr=vad_sr, target_channels=vad_ch)
 
-    # 2) run JaVAD (timestamps)
+    # 2) run sincqdr (timestamps)
     print(f"[vad] {vad_wav.name}")
     intervals = run_sincqdr_vad(vad_wav, jcfg)
 
@@ -160,7 +160,7 @@ def process_one_audio(
 
     model_info = {
         "name": "javad",
-        "model_name": jcfg.model_name,
+        "model_name": jcfg.device,
         "checkpoint": jcfg.checkpoint_path,
         "device": jcfg.device,
         "postprocess": {
@@ -307,8 +307,8 @@ def main() -> int:
     if not checkpoint_path:
         raise RuntimeError("SINCQDR_CHECKPOINT env var is required (path to SINCQDR .pt checkpoint).")
 
-    model_name = os.getenv("SINCQDR_MODEL_NAME", "balanced").strip()
-    device = os.getenv("SINCQDR_DEVICE", "cpu").strip()  # keep as cpu for Pi
+    device = os.getenv("SINCQDR_MODEL_NAME", "balanced").strip()
+    device = os.getenv("SINCQDR_DEVICE", "cpu").strip()  # keep cpu for pi
 
     # --- VAD input format ---
     vad_sr = int(os.getenv("VAD_SAMPLE_RATE", "16000"))
@@ -363,7 +363,7 @@ def main() -> int:
     print(f"[pipeline] results_dir={cfg.vad.results_dir}")
     print(f"[pipeline] clips_dir={clips_dir}")
     print(f"[pipeline] upload_enabled={upload_enabled} upload_audio_clips={upload_audio_clips}")
-    print(f"[pipeline] javad model={jcfg.model_name} device={jcfg.device}")
+    print(f"[pipeline] sincqdr model={jcfg.device} device={jcfg.device}")
     print(f"[pipeline] vad input target: {vad_sr} Hz, ch={vad_ch}")
 
     if mode == "watch":
