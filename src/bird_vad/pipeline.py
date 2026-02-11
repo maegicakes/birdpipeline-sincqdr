@@ -112,6 +112,47 @@ def _delete_sidecars_for_source_wav(source_wav: Path) -> None:
         except Exception:
             pass
 
+def clip_wav_segments(
+    wav_path: str | Path,
+    intervals: List[Tuple[float, float]],
+    out_dir: str | Path,
+    base_name: str,
+    *,
+    min_len_s: float = 0.0,
+    max_len_s: float | None = None,
+) -> list[Path]:
+    
+    wav_path = Path(wav_path)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    audio, sr = sf.read(str(wav_path), dtype="float32", always_2d=True)  # [T, C]
+    out_paths: list[Path] = []
+
+    for i, (start_s, end_s) in enumerate(intervals):
+        if end_s <= start_s:
+            continue
+
+        if max_len_s is not None and (end_s - start_s) > max_len_s:
+            end_s = start_s + max_len_s
+        if (end_s - start_s) < min_len_s:
+            continue
+
+        start_i = int(round(start_s * sr))
+        end_i = int(round(end_s * sr))
+
+        start_i = max(0, min(start_i, audio.shape[0]))
+        end_i = max(0, min(end_i, audio.shape[0]))
+        if end_i <= start_i:
+            continue
+
+        seg = audio[start_i:end_i]
+        out = out_dir / f"{base_name}_{i:03d}.wav"
+        sf.write(str(out), seg, sr, subtype="PCM_16")
+        out_paths.append(out)
+
+    return out_paths
+
 def process_one_audio(
     *,
     cfg,
@@ -142,6 +183,15 @@ def process_one_audio(
     # 2) run sincqdr (timestamps)
     print(f"[vad] {vad_wav.name}")
     intervals = run_sincqdr_vad(vad_wav, jcfg)
+
+    clip_paths = clip_wav_segments(
+    wav_path=vad_wav,
+    intervals=intervals,
+    out_dir=clips_dir,
+    base_name=chunk_id,
+    min_len_s=0.2,
+    )
+
 
     # 3) clip audio segments (optional)
     if upload_audio_clips and intervals:
