@@ -99,11 +99,6 @@ def _join_prefix(prefix: str, name: str) -> str:
 
 
 def upload_file(path: Path, *, key_name: Optional[str] = None, settings: Optional[S3Settings] = None) -> str:
-    """
-    Upload any single file (JSON, WAV clips, etc.) to S3.
-
-    Returns the object key that was uploaded.
-    """
     if not path.exists():
         raise FileNotFoundError(str(path))
 
@@ -133,32 +128,18 @@ def upload_file(path: Path, *, key_name: Optional[str] = None, settings: Optiona
 
 
 def upload_json_result(json_path: Path, settings: Optional[S3Settings] = None) -> str:
-    """
-    Upload exactly one JSON result file to S3.
-    Returns the object key.
-    """
     if json_path.suffix.lower() != ".json":
         raise ValueError(f"Refusing to upload non-json file as result: {json_path}")
     return upload_file(json_path, settings=settings)
 
 
 def upload_wav_clip(wav_path: Path, settings: Optional[S3Settings] = None) -> str:
-    """
-    Upload exactly one WAV clip to S3.
-    Returns the object key.
-    """
     if wav_path.suffix.lower() != ".wav":
         raise ValueError(f"Refusing to upload non-wav file as clip: {wav_path}")
     return upload_file(wav_path, settings=settings)
 
 
 def upload_wav_clips_for_chunk(clips_dir: Path, chunk_id: str, settings: Optional[S3Settings] = None) -> int:
-    """
-    Upload all WAV clips for a chunk_id from clips_dir.
-    Expects naming like: <chunk_id>_000.wav, <chunk_id>_001.wav, ...
-
-    Returns number of uploaded clips.
-    """
     settings = settings or load_s3_settings_from_env()
     clips_dir = clips_dir.expanduser().resolve()
     if not clips_dir.exists():
@@ -172,10 +153,6 @@ def upload_wav_clips_for_chunk(clips_dir: Path, chunk_id: str, settings: Optiona
 
 
 def upload_results_dir(results_dir: Path, settings: Optional[S3Settings] = None) -> int:
-    """
-    Upload all *.json files in results_dir (non-recursive).
-    Returns number of uploaded files.
-    """
     settings = settings or load_s3_settings_from_env()
     results_dir = results_dir.expanduser().resolve()
     if not results_dir.exists():

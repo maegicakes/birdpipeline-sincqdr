@@ -22,14 +22,6 @@ def _timestamp_name(prefix: str = "", suffix: str = ".wav") -> str:
 
 
 def record_wav_chunk(settings: RecorderSettings, filename: str | None = None) -> Path:
-    """
-    Record one WAV chunk using `arecord`.
-
-    This is based on the approach in bird-files-main:
-      - records fixed-length chunks
-      - device comes from env/config (ARECORD_DEVICE)
-      - stores in an audio directory
-    """
     settings.audio_dir.mkdir(parents=True, exist_ok=True)
 
     name = filename or _timestamp_name()

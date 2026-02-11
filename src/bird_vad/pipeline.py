@@ -15,7 +15,7 @@ import soundfile as sf
 
 from bird_vad.config import load_config
 from bird_vad.recorder import RecorderSettings, record_wav_chunk
-from bird_vad.vad_sincqdr import JaVADSettings, run_javad_vad
+from bird_vad.vad_sincqdr import sincQDRSettings, run_sincqdr_vad
 from bird_vad.formats import write_vad_json
 from bird_vad.uploader import (
     load_s3_settings_from_env,
@@ -23,10 +23,6 @@ from bird_vad.uploader import (
     upload_wav_clips_for_chunk,
 )
 
-
-# ----------------------------
-# Audio helpers
-# ----------------------------
 
 def _cmd_exists(cmd: str) -> bool:
     return subprocess.call(["which", cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
@@ -39,10 +35,6 @@ def convert_wav_for_vad(
     target_sr: int = 16000,
     target_channels: int = 1,
 ) -> Path:
-    """
-    Convert to JaVAD-friendly wav (typically 16kHz mono).
-    Prefer ffmpeg if available, fallback to librosa+soundfile.
-    """
     out_wav.parent.mkdir(parents=True, exist_ok=True)
 
     if _cmd_exists("ffmpeg"):
@@ -63,7 +55,7 @@ def convert_wav_for_vad(
         subprocess.run(cmd, check=True)
         return out_wav
 
-    # Fallback: librosa
+    # fallback - librosa
     import librosa  # local import
 
     y, _sr = librosa.load(str(in_wav), sr=target_sr, mono=(target_channels == 1))
@@ -80,10 +72,6 @@ def clip_segments_to_wavs(
     max_clip_s: Optional[float] = None,
     min_clip_s: float = 0.0,
 ) -> List[Path]:
-    """
-    Write one wav per speech segment as:
-      <chunk_id>_000.wav, <chunk_id>_001.wav, ...
-    """
     clips_dir.mkdir(parents=True, exist_ok=True)
 
     audio, sr = sf.read(str(wav_path), dtype="float32", always_2d=False)
@@ -95,7 +83,6 @@ def clip_segments_to_wavs(
         if e <= s:
             continue
 
-        # cap clip length if requested
         if max_clip_s is not None and (e - s) > max_clip_s:
             e = s + max_clip_s
 
@@ -117,26 +104,13 @@ def clip_segments_to_wavs(
     return out_paths
 
 
-# ----------------------------
-# “Old pipeline” style cleanup
-# ----------------------------
-
 def _delete_sidecars_for_source_wav(source_wav: Path) -> None:
-    """
-    Delete any files that share the same base name as source_wav.
-    Similar idea to old: glob(file.replace(".wav","*")) then remove.
-    """
     pattern = str(source_wav).replace(".wav", "*")
     for p in glob.glob(pattern):
         try:
             Path(p).unlink(missing_ok=True)
         except Exception:
             pass
-
-
-# ----------------------------
-# Core processing (shared)
-# ----------------------------
 
 def process_one_audio(
     *,
@@ -156,22 +130,18 @@ def process_one_audio(
     delete_vad_wav: bool,
     delete_clips: bool,
 ) -> None:
-    """
-    Process exactly one source wav:
-      convert -> JaVAD -> clips -> write JSON -> upload -> cleanup
-    Works for BOTH record mode and watch mode.
-    """
+
     vad_wav: Optional[Path] = None
     out_json: Optional[Path] = None
     clip_paths: List[Path] = []
 
-    # 1) convert to JaVAD-friendly audio
+    # 1) convert to sincQDR-friendly audio
     vad_wav = cfg.recorder.audio_dir / f"{chunk_id}.vad_input.wav"
     convert_wav_for_vad(source_wav, vad_wav, target_sr=vad_sr, target_channels=vad_ch)
 
     # 2) run JaVAD (timestamps)
     print(f"[vad] {vad_wav.name}")
-    intervals = run_javad_vad(vad_wav, jcfg)
+    intervals = run_sincQDR_vad(vad_wav, jcfg)
 
     # 3) clip audio segments (optional)
     if upload_audio_clips and intervals:
@@ -256,14 +226,10 @@ def process_one_audio(
 
 
 
-# ----------------------------
-# Watch mode (old upload_process.py behavior)
-# ----------------------------
-
 def watch_loop(
     *,
     cfg,
-    jcfg: JaVADSettings,
+    jcfg: sincQDRSettings,
     s3_settings,
     clips_dir: Path,
     vad_sr: int,
@@ -276,11 +242,6 @@ def watch_loop(
     delete_vad_wav: bool,
     delete_clips: bool,
 ) -> int:
-    """
-    Watch cfg.recorder.audio_dir for .wav files.
-    Skip newest file (still being written), process the rest.
-    Optionally delete sidecars like old script.
-    """
     delete_sidecars = os.getenv("DELETE_SIDECARS", "1").strip().lower() in {"1", "true", "yes", "y", "on"}
     sleep_s = float(os.getenv("WATCH_SLEEP_SECONDS", "1"))
 
@@ -338,20 +299,16 @@ def watch_loop(
             time.sleep(1)
 
 
-# ----------------------------
-# Main
-# ----------------------------
-
 def main() -> int:
     cfg = load_config()
 
-    # --- Required: JaVAD checkpoint path ---
-    checkpoint_path = os.getenv("JAVAD_CHECKPOINT", "").strip()
+    # sincQDR checkpt path
+    checkpoint_path = os.getenv("SINCQDR_CHECKPOINT", "").strip()
     if not checkpoint_path:
-        raise RuntimeError("JAVAD_CHECKPOINT env var is required (path to JaVAD .pt checkpoint).")
+        raise RuntimeError("SINCQDR_CHECKPOINT env var is required (path to SINCQDR .pt checkpoint).")
 
-    model_name = os.getenv("JAVAD_MODEL_NAME", "balanced").strip()
-    device = os.getenv("JAVAD_DEVICE", "cpu").strip()  # keep as cpu for Pi
+    model_name = os.getenv("SINCQDR_MODEL_NAME", "balanced").strip()
+    device = os.getenv("SINCQDR_DEVICE", "cpu").strip()  # keep as cpu for Pi
 
     # --- VAD input format ---
     vad_sr = int(os.getenv("VAD_SAMPLE_RATE", "16000"))
@@ -388,7 +345,7 @@ def main() -> int:
     )
 
     # --- JaVAD settings ---
-    jcfg = JaVADSettings(
+    jcfg = sincQDRSettings(
         checkpoint_path=checkpoint_path,
         model_name=model_name,
         device=device,
@@ -423,9 +380,7 @@ def main() -> int:
             delete_clips=delete_clips,
         )
 
-    # ----------------------------
-    # Record mode (current behavior)
-    # ----------------------------
+# record
     while True:
         chunk_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 

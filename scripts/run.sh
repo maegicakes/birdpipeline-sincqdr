@@ -21,17 +21,17 @@ if [ -f ".env" ]; then
 fi
 
 # Basic sanity checks
-: "${JAVAD_CHECKPOINT:?JAVAD_CHECKPOINT is not set}"
+: "${SINCQDR_CHECKPOINT:?SINCQDR_CHECKPOINT is not set}"
 : "${S3_BUCKET:-}"   # optional, only required if UPLOAD_ENABLED=1
 
 echo "[run.sh] Starting bird VAD pipeline"
 echo "[run.sh] Device: ${DEVICE_ID:-unknown}"
-echo "[run.sh] Model: ${JAVAD_MODEL_NAME:-balanced}"
-echo "[run.sh] Checkpoint: ${JAVAD_CHECKPOINT}"
+echo "[run.sh] Model: ${SINCQDR_MODEL_NAME:-balanced}"
+echo "[run.sh] Checkpoint: ${SINCQDR_CHECKPOINT}"
 
 # Run the pipeline
 # exec python -m bird_vad.pipeline
 
 # exec PYTHONPATH=src:../javad/src python -m bird_vad.pipeline
 
-exec env PYTHONPATH="src:../javad/src" python -m bird_vad.pipeline
+exec env PYTHONPATH="src:../sincQDR/src" python -m bird_vad.pipeline

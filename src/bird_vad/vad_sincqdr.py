@@ -6,7 +6,7 @@ from bird_vad.vad_sincqdr.extras import get_speech_intervals
 
 
 @dataclass(frozen=True)
-class JaVADSettings:
+class sincQDRSettings:
     checkpoint_path: str
     model_name: str = "balanced"
     device: str = "cpu"
@@ -32,28 +32,14 @@ def _drop_short(intervals: List[Tuple[float, float]], min_len_s: float):
     return [(s, e) for s, e in intervals if (e - s) >= min_len_s]
 
 
-def run_javad_vad(audio_path: str | Path, settings: JaVADSettings):
+def run_javad_vad(audio_path: str | Path, settings: sincQDRSettings):
     audio_path = Path(audio_path)
-
-    # 🔑 THIS is the correct JaVAD call (checkpoint REQUIRED)
-    # raw = get_speech_intervals(
-    #     str(audio_path),
-    #     checkpoint=settings.checkpoint_path,
-    # )
-
-    # # convert to floats
-    # intervals: List[Tuple[float, float]] = [
-    #     (float(s), float(e)) for (s, e) in raw
-    # ]
 
     raw = get_speech_intervals(
     str(audio_path),
     checkpoint=settings.checkpoint_path,
     )
 
-# JaVAD returns either:
-# 1) intervals directly: [(start, end), ...]
-# 2) (frame_scores, intervals): (list[float], list[tuple])
     if isinstance(raw, tuple) and len(raw) == 2:
         raw_intervals = raw[1]
     else:
@@ -61,7 +47,6 @@ def run_javad_vad(audio_path: str | Path, settings: JaVADSettings):
 
     intervals = []
     for item in raw_intervals:
-        # item could be (start, end) or (start, end, score, ...)
         s = float(item[0])
         e = float(item[1])
         intervals.append((s, e))

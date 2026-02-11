@@ -8,9 +8,6 @@ from typing import Dict, List, Tuple, Any
 
 
 def _to_json_safe(obj: Any) -> Any:
-    """
-    Convert common Python objects to JSON-serializable forms.
-    """
     if is_dataclass(obj):
         return asdict(obj)
     if isinstance(obj, Path):
@@ -34,11 +31,6 @@ def write_vad_json(
     model_info: Dict[str, Any],
     extra_meta: Dict[str, Any] | None = None,
 ) -> None:
-    """
-    Write the canonical VAD result JSON.
-
-    This is the file you upload.
-    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     payload = {
@@ -79,9 +71,6 @@ def write_rttm(
     channel: int = 1,
     speaker: str = "speech",
 ) -> None:
-    """
-    Optional: write RTTM format (standard in speech research).
-    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     lines: List[str] = []
@@ -100,9 +89,6 @@ def write_csv(
     *,
     intervals: List[Tuple[float, float]],
 ) -> None:
-    """
-    Optional: simple CSV for quick inspection.
-    """
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     lines = ["start_s,end_s"]
