@@ -5,7 +5,9 @@ from pathlib import Path
 from typing import List, Tuple
 
 import torch
-import torchaudio
+# import torchaudio
+import numpy as np
+import soundfile as sf
 
 
 @dataclass(frozen=True)
@@ -78,16 +80,13 @@ def run_sincqdr_vad(audio_path: str | Path, settings: SincQDRSettings) -> List[T
 
     device = torch.device(settings.device)
 
-    import numpy as np
-    import soundfile as sf
+    audio_np, sr = sf.read(str(audio_path), dtype="float32", always_2d=True) 
+    audio_mono = audio_np.mean(axis=1) 
 
-    audio_np, sr = sf.read(str(audio_path), dtype="float32", always_2d=True)  # shape [T, C]
-    audio_mono = audio_np.mean(axis=1)  # [T]
-
-    # torchaudio.load -> torchcodec
     if sr != settings.sample_rate:
-        x_old = np.linspace(0.0, 1.0, num=audio_mono.shape[0], endpoint=False)
-        new_len = int(round(audio_mono.shape[0] * (settings.sample_rate / sr)))
+        old_len = audio_mono.shape[0]
+        new_len = int(round(old_len * (settings.sample_rate / sr)))
+        x_old = np.linspace(0.0, 1.0, num=old_len, endpoint=False)
         x_new = np.linspace(0.0, 1.0, num=new_len, endpoint=False)
         audio_mono = np.interp(x_new, x_old, audio_mono).astype(np.float32)
         sr = settings.sample_rate
