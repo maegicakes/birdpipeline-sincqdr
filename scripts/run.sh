@@ -34,4 +34,4 @@ echo "[run.sh] Checkpoint: ${SINCQDR_CHECKPOINT}"
 
 # exec PYTHONPATH=src:../javad/src python -m bird_vad.pipeline
 
-exec env PYTHONPATH="src:../sincQDR/src" python -m bird_vad.pipeline
+exec env PYTHONPATH="src:../sincQDR/SincQDR-VAD" python -m bird_vad.pipeline

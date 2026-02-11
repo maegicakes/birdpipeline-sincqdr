@@ -15,7 +15,7 @@ import soundfile as sf
 
 from bird_vad.config import load_config
 from bird_vad.recorder import RecorderSettings, record_wav_chunk
-from bird_vad.vad_sincqdr import sincQDRSettings, run_sincqdr_vad
+from bird_vad.vad_sincqdr import SincQDRSettings, run_sincqdr_vad
 from bird_vad.formats import write_vad_json
 from bird_vad.uploader import (
     load_s3_settings_from_env,
@@ -115,7 +115,7 @@ def _delete_sidecars_for_source_wav(source_wav: Path) -> None:
 def process_one_audio(
     *,
     cfg,
-    jcfg: JaVADSettings,
+    jcfg: SincQDRSettings,
     s3_settings,
     chunk_id: str,
     source_wav: Path,
@@ -141,7 +141,7 @@ def process_one_audio(
 
     # 2) run JaVAD (timestamps)
     print(f"[vad] {vad_wav.name}")
-    intervals = run_sincQDR_vad(vad_wav, jcfg)
+    intervals = run_sincqdr_vad(vad_wav, jcfg)
 
     # 3) clip audio segments (optional)
     if upload_audio_clips and intervals:
@@ -344,14 +344,17 @@ def main() -> int:
         audio_dir=cfg.recorder.audio_dir,
     )
 
-    # --- JaVAD settings ---
-    jcfg = sincQDRSettings(
-        checkpoint_path=checkpoint_path,
-        model_name=model_name,
-        device=device,
-        min_speech_ms=cfg.vad.min_speech_ms,
-        min_silence_ms=cfg.vad.min_silence_ms,
+    jcfg = SincQDRSettings(
+    checkpoint_path=checkpoint_path,
+    device=device,
+    threshold=float(os.getenv("SINCQDR_THRESHOLD", str(cfg.vad.threshold))),
+    window_duration=float(os.getenv("SINCQDR_WINDOW", "0.63")),
+    step_size=float(os.getenv("SINCQDR_STEP", "0.08")),
+    batch_size=int(os.getenv("SINCQDR_BATCH", "8")),
+    min_speech_ms=cfg.vad.min_speech_ms,
+    min_silence_ms=cfg.vad.min_silence_ms,
     )
+
 
     print("[pipeline] starting")
     print(f"[pipeline] mode={mode}")
