@@ -78,10 +78,27 @@ def run_sincqdr_vad(audio_path: str | Path, settings: SincQDRSettings) -> List[T
 
     device = torch.device(settings.device)
 
-    waveform, sr = torchaudio.load(str(audio_path))
-    waveform = waveform.mean(dim=0, keepdim=True)  # mono [1,T]
+    import numpy as np
+    import soundfile as sf
+
+    audio_np, sr = sf.read(str(audio_path), dtype="float32", always_2d=True)  # shape [T, C]
+    audio_mono = audio_np.mean(axis=1)  # [T]
+
+    # torchaudio.load -> torchcodec
     if sr != settings.sample_rate:
-        waveform = torchaudio.functional.resample(waveform, orig_freq=sr, new_freq=settings.sample_rate)
+        x_old = np.linspace(0.0, 1.0, num=audio_mono.shape[0], endpoint=False)
+        new_len = int(round(audio_mono.shape[0] * (settings.sample_rate / sr)))
+        x_new = np.linspace(0.0, 1.0, num=new_len, endpoint=False)
+        audio_mono = np.interp(x_new, x_old, audio_mono).astype(np.float32)
+        sr = settings.sample_rate
+
+    waveform = torch.from_numpy(audio_mono).unsqueeze(0)  # [1, T]
+
+
+    # waveform, sr = torchaudio.load(str(audio_path))
+    # waveform = waveform.mean(dim=0, keepdim=True)  # mono [1,T]
+    # if sr != settings.sample_rate:
+    #     waveform = torchaudio.functional.resample(waveform, orig_freq=sr, new_freq=settings.sample_rate)
 
     chunks = _chunk_waveform(
         waveform,
