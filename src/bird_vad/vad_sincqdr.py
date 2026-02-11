@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Tuple
 from dataclasses import dataclass
 
-from javad.extras import get_speech_intervals
+from bird_vad.vad_sincqdr.extras import get_speech_intervals
 
 
 @dataclass(frozen=True)

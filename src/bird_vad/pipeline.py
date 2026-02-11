@@ -15,7 +15,7 @@ import soundfile as sf
 
 from bird_vad.config import load_config
 from bird_vad.recorder import RecorderSettings, record_wav_chunk
-from bird_vad.vad_javad import JaVADSettings, run_javad_vad
+from bird_vad.vad_sincqdr import JaVADSettings, run_javad_vad
 from bird_vad.formats import write_vad_json
 from bird_vad.uploader import (
     load_s3_settings_from_env,
