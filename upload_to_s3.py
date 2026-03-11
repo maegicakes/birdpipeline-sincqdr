@@ -6,7 +6,7 @@ import argparse
 import mimetypes
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import redis
+from upstash_redis import Redis
 import json
 import boto3
 from botocore.config import Config
@@ -86,13 +86,12 @@ def now_iso_utc() -> str:
 
 # Redis
 def make_redis_from_env():
-    host = os.getenv("REDIS_HOST")
-    port = int(os.getenv("REDIS_PORT", "6379"))
-    password = os.getenv("REDIS_PASSWORD")
+    url = os.getenv("UPSTASH_REDIS_REST_URL")
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN")
 
-    if not host:
-        raise RuntimeError("REDIS_HOST not set")
-    return redis.Redis(host=host, port=port, password=password, decode_responses=True)
+    if not url or not token:
+        raise RuntimeError("UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set")
+    return Redis(url=url, token=token)
 
 def main():
     parser = argparse.ArgumentParser(description="Upload a directory of files to S3/R2/MinIO.")
