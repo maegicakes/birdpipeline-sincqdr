@@ -184,17 +184,25 @@ def process_one_audio(
     print(f"[vad] {vad_wav.name}")
     intervals = run_sincqdr_vad(vad_wav, jcfg)
 
-    # 3) clip audio segments
-    clip_paths = []
-    if intervals:
+    clip_paths = clip_wav_segments(
+    wav_path=vad_wav,
+    intervals=intervals,
+    out_dir=clips_dir,
+    base_name=chunk_id,
+    min_len_s=0.2,
+    )
+
+
+    # 3) clip audio segments (optional)
+    if upload_audio_clips and intervals:
         print(f"[clip] segments={len(intervals)}")
-        clip_paths = clip_wav_segments(
-            wav_path=vad_wav,
-            intervals=intervals,
-            out_dir=clips_dir,
-            base_name=chunk_id,
-            min_len_s=min_clip_s,
-            max_len_s=max_clip_s,
+        clip_paths = clip_segments_to_wavs(
+            vad_wav,
+            intervals,
+            clips_dir=clips_dir,
+            chunk_id=chunk_id,
+            max_clip_s=max_clip_s,
+            min_clip_s=min_clip_s,
         )
 
     # 4) write JSON (canonical output)
@@ -271,7 +279,7 @@ def process_one_audio(
 def watch_loop(
     *,
     cfg,
-    jcfg: SincQDRSettings,
+    jcfg: sincQDRSettings,
     s3_settings,
     clips_dir: Path,
     vad_sr: int,
