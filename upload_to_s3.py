@@ -93,6 +93,7 @@ def make_redis_from_env():
         raise RuntimeError("UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN not set")
     return Redis(url=url, token=token)
 
+# not actually used
 def main():
     parser = argparse.ArgumentParser(description="Upload a directory of files to S3/R2/MinIO.")
     parser.add_argument("--dir", required=True, help="Directory of files to upload")
@@ -138,16 +139,16 @@ def main():
         for path in files:
             key = key_for(path, base_dir, args.prefix)
             fut = pool.submit(s3_upload, s3, bucket, path, key)
-            futs[fut] = path
+            futs[fut] = (path, key)
 
         for fut in as_completed(futs):
-            path = futs[fut]
+            path, key = futs[fut]
             try:
                 success = fut.result()
             except Exception as e:
                 print(f"[s3] Unexpected error uploading {path}: {e}")
                 success = False
-            
+
             if success:
                 ok += 1
 
@@ -155,7 +156,7 @@ def main():
                     job = {
                         "recording_id": key,          # simple idempotency key
                         "device_id": args.device_id,
-                        "bucket": args.bucket,
+                        "bucket": bucket,
                         "key": key,
                         "recorded_at": now_iso_utc(),
                     }

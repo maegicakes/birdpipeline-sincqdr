@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import json
 import mimetypes
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 import boto3
 from botocore.config import Config as BotoConfig
 from botocore.exceptions import BotoCoreError, ClientError
+from upstash_redis import Redis
 
 
 @dataclass(frozen=True)
@@ -106,6 +109,31 @@ def _join_prefix(prefix: str, name: str) -> str:
     return f"{prefix}/{name}" if prefix else name
 
 
+def _make_redis() -> Optional[Redis]:
+    url = os.getenv("UPSTASH_REDIS_REST_URL", "").strip()
+    token = os.getenv("UPSTASH_REDIS_REST_TOKEN", "").strip()
+    if not url or not token:
+        return None
+    return Redis(url=url, token=token)
+
+
+def _enqueue_job(key: str, bucket: str) -> None:
+    rds = _make_redis()
+    if rds is None:
+        return
+    queue = os.getenv("REDIS_QUEUE", "bird_jobs")
+    device_id = os.getenv("DEVICE_ID", "").strip()
+    job = {
+        "recording_id": key,
+        "device_id": device_id,
+        "bucket": bucket,
+        "key": key,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+    }
+    rds.rpush(queue, json.dumps(job))
+    print(f"[redis] enqueued: {job}")
+
+
 def upload_file(path: Path, *, key_name: Optional[str] = None, settings: Optional[S3Settings] = None) -> str:
     if not path.exists():
         raise FileNotFoundError(str(path))
@@ -127,6 +155,8 @@ def upload_file(path: Path, *, key_name: Optional[str] = None, settings: Optiona
             )
             if settings.delete_after_upload:
                 path.unlink(missing_ok=True)
+            if path.suffix.lower() == ".wav":
+                _enqueue_job(key, settings.bucket)
             return key
         except (ClientError, BotoCoreError, OSError) as e:
             last_err = e
