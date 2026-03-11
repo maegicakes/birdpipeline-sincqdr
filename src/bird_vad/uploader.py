@@ -52,8 +52,8 @@ def load_s3_settings_from_env() -> S3Settings:
     endpoint = endpoint.strip() if endpoint else None
 
     region = (
-        os.getenv("AWS_REGION")
-        or os.getenv("AWS_DEFAULT_REGION")
+        (os.getenv("AWS_REGION") or "").strip()
+        or (os.getenv("AWS_DEFAULT_REGION") or "").strip()
         or ("auto" if endpoint else "us-east-1")
     )
 
@@ -75,10 +75,18 @@ def _make_s3_client(settings: S3Settings):
         connect_timeout=10,
         read_timeout=60,
     )
+    # Strip credentials explicitly to guard against CRLF line endings in .env
+    # when sourced via bash (source .env), which appends \r to values.
+    access_key = (os.getenv("AWS_ACCESS_KEY_ID") or "").strip() or None
+    secret_key = (os.getenv("AWS_SECRET_ACCESS_KEY") or "").strip() or None
+    session_token = (os.getenv("AWS_SESSION_TOKEN") or "").strip() or None
     return boto3.client(
         "s3",
         region_name=settings.region,
         endpoint_url=settings.endpoint_url,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        aws_session_token=session_token,
         config=boto_cfg,
     )
 
