@@ -81,10 +81,10 @@ def main():
     addr = int(os.environ.get("INA260_ADDR", "0x40"), 16)
     ina = INA260(i2c, address=addr)
 
-    print("reading INA260... Ctrl+C to stop.")
     db = None
     backoff = 1.0
     interval_s = int(os.environ.get("HEARTBEAT_INTERVAL_SEC", "600"))
+    print(f"[heartbeat] reading INA260 on addr=0x{addr:02X}, interval={interval_s}s. Ctrl+C to stop.")
 
     while True:
         try:
@@ -101,7 +101,7 @@ def main():
 
             now_utc = datetime.now(timezone.utc)
             print(
-                f"{now_utc.isoformat()} dev={DEVICE_ID} "
+                f"[heartbeat] {now_utc.isoformat()} dev={DEVICE_ID} "
                 f"V={voltage_v:.2f}V I={current_a:.3f}A P={power_w:.3f}W "
                 f"SOC≈{soc_pct:3d}% CPU={cpu_temp_c if cpu_temp_c is not None else 'NA'}°C"
             )
