@@ -34,4 +34,11 @@ echo "[run.sh] Checkpoint: ${SINCQDR_CHECKPOINT}"
 
 # exec PYTHONPATH=src:../javad/src python -m bird_vad.pipeline
 
-exec env PYTHONPATH="src:../sincQDR/SincQDR-VAD" python -m bird_vad.pipeline
+export PYTHONPATH="src:../sincQDR/SincQDR-VAD"
+
+# Run heartbeat in background; kill it when the pipeline exits
+python send_heartbeat.py &
+HEARTBEAT_PID=$!
+trap 'kill $HEARTBEAT_PID 2>/dev/null' EXIT
+
+exec python -m bird_vad.pipeline
