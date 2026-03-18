@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import csv
 import time
 import glob
 from datetime import datetime
@@ -181,8 +182,31 @@ def process_one_audio(
     convert_wav_for_vad(source_wav, vad_wav, target_sr=vad_sr, target_channels=vad_ch)
 
     # 2) run sincqdr (timestamps)
+    # print(f"[vad] {vad_wav.name}")
+    # intervals = run_sincqdr_vad(vad_wav, jcfg)
+    
     print(f"[vad] {vad_wav.name}")
+
+    log_path = Path("/home/raspi/inference_times.csv")
+    file_exists = log_path.exists()
+
+    start_time = time.time()
     intervals = run_sincqdr_vad(vad_wav, jcfg)
+    end_time = time.time()
+
+    inference_seconds = end_time - start_time
+
+    with open(log_path, "a", newline="") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["timestamp", "chunk_id", "inference_seconds"])
+        writer.writerow([
+            time.strftime("%Y-%m-%d %H:%M:%S"),
+            chunk_id,
+            inference_seconds,
+        ])
+
+    print(f"[timing] inference_seconds={inference_seconds:.4f}")
 
     clip_paths = clip_wav_segments(
     wav_path=vad_wav,
