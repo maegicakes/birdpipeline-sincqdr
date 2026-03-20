@@ -37,8 +37,8 @@ echo "[run.sh] Checkpoint: ${SINCQDR_CHECKPOINT}"
 export PYTHONPATH="src:../sincQDR/SincQDR-VAD"
 
 # Run heartbeat in background; kill it when the pipeline exits
-# python send_heartbeat.py &
-# HEARTBEAT_PID=$!
-# trap 'kill $HEARTBEAT_PID 2>/dev/null' EXIT
+python send_heartbeat.py &
+HEARTBEAT_PID=$!
+trap 'kill $HEARTBEAT_PID 2>/dev/null' EXIT
 
-exec python -m bird_vad.pipeline
+python -m bird_vad.pipeline
